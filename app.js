@@ -63,6 +63,9 @@ function render(){
   if (!$("practice").hidden) closeExample(false);
   $("welcome").hidden = Boolean(match);
   $("course").hidden = !match;
+  const page = $("page-surface");
+  page.querySelector(":scope > .ink-layer")?.remove();
+  pen.attach(page, match ? "lesson-" + selected : "welcome");
   if (!match) return;
   const group=groups.find(g=>g.types.includes(selected));
   $("tabs").replaceChildren(...groups.map(g=>{
@@ -86,7 +89,7 @@ function render(){
   for (const step of strategies[selected]) steps.append(node("li", "", step));
   guide.append(node("h3", "", "拿到这类题怎么做"), steps);
   lesson.append(guide);
-  if (basics) { renderKeywordTips(lesson); pen.attach(lesson, "lesson-0"); return; }
+  if (basics) { renderKeywordTips(lesson); return; }
   const subset=examples.filter(e=>e.type===selected);
   subset.forEach((e,i)=>{
     const card=node("article","method");
@@ -94,7 +97,6 @@ function render(){
     const foot=node("div","card-foot"),b=node("button","primary","打开例题");
     b.onclick=()=>openExample(e,b);foot.append(node("span","",origin(e)),b);card.append(foot);lesson.append(card);
   });
-  pen.attach(lesson, "lesson-" + selected);
 
 }
 const annotations=new Map();
@@ -179,8 +181,6 @@ function paintEvidence(){
   $("reveal").textContent=revealed?"隐藏依据与答案":"显示依据与答案";
   $("reveal").setAttribute("aria-expanded",String(revealed));
   $("hint").textContent=revealed?(e.answer==="NOT GIVEN"?"高亮处是相关信息，题干所问的信息未给出。":"对照高亮原句，核对你的作答。"):"选中文字后右键 Highlight，标记你的线索";
-  pen.attach($("passage"), origin(e) + "/passage");
-  pen.attach($("question"), origin(e) + "/question");
 }
 function openExample(e,button){
   if (opener === button && !$("practice").hidden) { closeExample(); return; }
@@ -190,6 +190,11 @@ function openExample(e,button){
   $("ex-title").textContent=e.article;$("source").textContent=origin(e);$("qnum").textContent="Question "+e.q;
   $("response").value="";$("question").replaceChildren(node("div","qtext",e.question));
   if(e.pic){const img=node("img","question-image");img.src="./"+e.pic;img.alt=e.alt||("剑桥雅思 "+e.volume+" 阅读 Q"+e.q+" 原题");$("question").append(img);}
+  for (const area of ["passage", "question"]) {
+    const sheet = $(area).closest(".practice-sheet");
+    sheet.querySelector(".ink-layer")?.remove();
+    pen.attach(sheet, origin(e) + "/" + area);
+  }
   paintEvidence();
   const card=$("practice");
   $("shade").hidden=false;
@@ -224,7 +229,6 @@ document.addEventListener("keydown",event=>{
     if(!event.shiftKey && document.activeElement===last){event.preventDefault();first.focus();}
   }
 });
-pen.attach($("welcome"), "welcome");
 pen.toolbar(document.querySelector("main"), document.querySelector("main"));
 pen.toolbar(document.querySelector(".dialog-head"), $("practice"), $("close"));
 window.addEventListener("hashchange",render);render();
