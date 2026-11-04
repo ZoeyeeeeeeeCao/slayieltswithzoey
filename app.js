@@ -173,11 +173,24 @@ document.addEventListener("pointerdown",event=>{if(event.target!==menu)dismissMe
 $("practice").addEventListener("scroll",dismissMenu,true);
 function paintEvidence(){
   const e=current;
-  drawAnnotatedText($("passage"),"passage",[[e.before?e.before+" ":"",false],[e.evidence,true],[e.after?" "+e.after:"",false]]);
+  let segments;
+  if (e.fullText) {
+    segments = [];
+    let offset = 0;
+    for (const quote of [...e.quotes].sort((a,b)=>e.fullText.indexOf(a)-e.fullText.indexOf(b))) {
+      const start = e.fullText.indexOf(quote);
+      segments.push([e.fullText.slice(offset,start), false], [quote, true]);
+      offset = start + quote.length;
+    }
+    segments.push([e.fullText.slice(offset), false]);
+  } else {
+    segments = [[e.before?e.before+" ":"",false],[e.evidence,true],[e.after?" "+e.after:"",false]];
+  }
+  drawAnnotatedText($("passage"),"passage",segments);
   drawAnnotatedText($("question").querySelector(".qtext"),"question",[[e.question,false]]);
   $("answer").hidden=!revealed;
   $("answer").replaceChildren();
-  if(revealed)$("answer").append(node("strong","","答案　"+e.answer),node("span","",e.explain));
+  if(revealed)$("answer").append(node("strong","","答案　"+(e.keys ? e.keys.map((key,i)=>(e.firstNumber+i)+" "+key).join(" · ") : e.answer)),node("span","",e.explain));
   $("reveal").textContent=revealed?"隐藏依据与答案":"显示依据与答案";
   $("reveal").setAttribute("aria-expanded",String(revealed));
   $("hint").textContent=revealed?(e.answer==="NOT GIVEN"?"高亮处是相关信息，题干所问的信息未给出。":"对照高亮原句，核对你的作答。"):"选中文字后右键 Highlight，标记你的线索";
@@ -187,7 +200,23 @@ function openExample(e,button){
   closeExample(false);
   current=e;opener=button;revealed=false;
   button.setAttribute("aria-expanded","true");
-  $("ex-title").textContent=e.article;$("source").textContent=origin(e);$("qnum").textContent="Question "+e.q;
+  $("ex-title").textContent=e.article;$("source").textContent=origin(e);$("qnum").textContent=(e.keys ? "Questions " : "Question ")+e.q;
+  $("passage").previousElementSibling.textContent=e.fullText ? "阅读原文（全文）" : "原文节选";
+  $("response").parentElement.hidden=Boolean(e.keys);
+  $("group-response")?.remove();
+  if (e.keys) {
+    const group=node("fieldset","group-response");
+    group.id="group-response";
+    group.append(node("legend","","你的作答"));
+    e.keys.forEach((_,i)=>{
+      const label=node("label","",String(e.firstNumber+i)+" ");
+      const select=node("select");
+      select.append(new Option("—",""), ...e.choices.map(choice=>new Option(choice,choice)));
+      label.append(select);
+      group.append(label);
+    });
+    $("answer").before(group);
+  }
   $("response").value="";$("question").replaceChildren(node("div","qtext",e.question));
   if(e.pic){const img=node("img","question-image");img.src="./"+e.pic;img.alt=e.alt||("剑桥雅思 "+e.volume+" 阅读 Q"+e.q+" 原题");$("question").append(img);}
   for (const area of ["passage", "question"]) {
