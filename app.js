@@ -34,7 +34,10 @@ const pad=n=>String(n).padStart(2,"0");
 const code=n=>n===15?"附":pad(n);
 const origin=e=>"剑桥雅思 "+e.volume+" · Test "+e.test+" · Passage "+e.passage+" · Q"+e.q;
 let selected=0, current=null, opener=null, revealed=false;
-function go(n){ if(selected===n)return; history.pushState(null,"","#type-"+n); render(); }
+function go(n){ if(selected===n)return; history.pushState(null,"","#lesson-1/type-"+n); render(); }
+$("lesson-select").addEventListener("change",()=>{
+  $("enter-course").href=$("lesson-select").value==="2"?"#lesson-2":"#lesson-1/type-0";
+});
 function renderKeywordTips(lesson){
   const rows=[
     ["圈人名，先找姓氏", "James Watson", "题干问 Watson 怎样解释这次发现。先扫读找 Watson，再读他讲自己与 Crick 为什么成功的那一句。", 14],
@@ -58,15 +61,34 @@ function renderKeywordTips(lesson){
   });
 }
 function render(){
-  const match=location.hash.match(/^#type-(\d+)$/);
+  // Keep existing #type-N links working as Lesson 1 links.
+  const match=location.hash.match(/^#(?:lesson-1\/)?type-(\d+)$/);
+  const lessonTwoMatch=location.hash.match(/^#lesson-2(?:\/(judgment|heading|fenjue))?$/);
+  const lessonTwo=Boolean(lessonTwoMatch);
+  const lessonTwoSection=lessonTwoMatch?.[1]||"judgment";
+  const inCourse=Boolean(match)||lessonTwo;
   selected=match && topics[Number(match[1])]?Number(match[1]):0;
   if (!$("practice").hidden) closeExample(false);
-  $("welcome").hidden = Boolean(match);
-  $("course").hidden = !match;
+  $("welcome").hidden = inCourse;
+  $("course").hidden = !inCourse;
+  if(inCourse){
+    $("lesson-select").value=lessonTwo?"2":"1";
+    $("enter-course").href=lessonTwo?"#lesson-2":"#lesson-1/type-0";
+  }
+  document.querySelector(".page-title").textContent=lessonTwo?"Lesson 2 · 阅读核心点与焚决":"Lesson 1 · 雅思阅读题型与解法";
+  $("tabs").hidden=false;
+  $("tabs").classList.toggle("lesson-two-tabs",lessonTwo);
+  $("lesson").classList.toggle("lesson-two",lessonTwo);
   const page = $("page-surface");
   page.querySelector(":scope > .ink-layer")?.remove();
-  pen.attach(page, match ? "lesson-" + selected : "welcome");
-  if (!match) return;
+  pen.attach(page, lessonTwo ? "lesson-two-" + lessonTwoSection : match ? "lesson-" + selected : "welcome");
+  if (!inCourse) return;
+  if(lessonTwo){
+    $("subtypes").closest("aside").hidden=true;
+    $("lesson").parentElement.classList.add("basics");
+    renderLessonTwo(lessonTwoSection);
+    return;
+  }
   const group=groups.find(g=>g.types.includes(selected));
   $("tabs").replaceChildren(...groups.map(g=>{
     const b=node("button","tab"+(g===group?" active":""));
@@ -98,6 +120,40 @@ function render(){
     b.onclick=()=>openExample(e,b);foot.append(node("span","",origin(e)),b);card.append(foot);lesson.append(card);
   });
 
+}
+function renderLessonTwo(section){
+  const sections=[['judgment','判断','判断题核心点'],['heading','heading','heading（匹配）核心点'],['fenjue','焚决','焚决']];
+  $("tabs").replaceChildren(...sections.map(([id,label])=>{
+    const b=node('button','tab'+(section===id?' active':''),label);
+    b.setAttribute('aria-pressed',String(section===id));
+    b.onclick=()=>{if(section===id)return;history.pushState(null,'','#lesson-2/'+id);render();window.scrollTo(0,0);};
+    return b;
+  }));
+  const lesson=$("lesson");
+  lesson.replaceChildren(node('div','overline','LESSON 02'),node('h2','lesson-title',sections.find(([id])=>id===section)[2]));
+  const cards=(rows)=>{
+    const list=node('div','lesson-two-cards');
+    rows.forEach(([title,body],i)=>{
+      const card=node('article','lesson-two-card');
+      card.append(node('span','step-num',pad(i+1)),node('h3','',title),node('p','',body));list.append(card);
+    });return list;
+  };
+  if(section==='judgment'){
+    lesson.append(node('p','intro','判断题中的信息变化'),cards(lessonTwoContent.judgment));
+  }else if(section==='heading'){
+    lesson.append(node('p','intro','23 组段落功能词。词语只提示段落功能，需结合其所在句及全段主旨核对。'));
+    const table=node('table','lesson-two-table');
+    const caption=node('caption','','段落功能与信号词');table.append(caption);
+    const head=document.createElement('thead'),tr=document.createElement('tr');
+    ['功能方向','信号词'].forEach(t=>{const th=node('th','',t);th.scope='col';tr.append(th);});head.append(tr);table.append(head);
+    const body=document.createElement('tbody');
+    lessonTwoContent.heading.forEach(([label,words])=>{
+      const row=document.createElement('tr'),th=node('th','',label),td=node('td','',words);th.scope='row';row.append(th,td);body.append(row);
+    });table.append(body);lesson.append(table);
+  }else{
+    lesson.append(node('p','intro','实在没时间了：判断题的原帖猜题经验'),node('p','lesson-two-note','以下属于原帖猜题说法，不是已验证的命题规律。'));
+    lesson.append(node('h3','keywords-title','判断题'),cards(lessonTwoContent.guessJudgment),node('h3','keywords-title','选择题'),node('p','intro','原帖的选项倾向'),cards(lessonTwoContent.guessChoice));
+  }
 }
 const annotations=new Map();
 const menu=$("highlight-menu");
