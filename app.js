@@ -122,7 +122,7 @@ function render(){
 
 }
 function renderLessonTwo(section){
-  const sections=[['judgment','判断','判断题核心点'],['heading','heading','heading（匹配）核心点'],['fenjue','焚决','焚决']];
+  const sections=[['judgment','判断','判断题核心点'],['heading','匹配题','匹配题核心点'],['fenjue','焚决','焚决']];
   $("tabs").replaceChildren(...sections.map(([id,label])=>{
     const b=node('button','tab'+(section===id?' active':''),label);
     b.setAttribute('aria-pressed',String(section===id));
@@ -135,24 +135,43 @@ function renderLessonTwo(section){
     const list=node('div','lesson-two-cards');
     rows.forEach(([title,body],i)=>{
       const card=node('article','lesson-two-card');
-      card.append(node('span','step-num',pad(i+1)),node('h3','',title),node('p','',body));list.append(card);
+      card.append(node('span','step-num',pad(i+1)),node('h3','',title),node('p','',body));
+      list.append(card);
     });return list;
   };
   if(section==='judgment'){
     lesson.append(node('p','intro','判断题中的信息变化'),cards(lessonTwoContent.judgment));
+    const practice=node('div','lesson-two-examples');
+    practice.append(node('h3','keywords-title','例题练习'));
+    lessonTwoJudgmentExamples.forEach(example=>{
+            const item=node('section','lesson-two-example');
+            item.dataset.exampleId=example.id;
+            item.append(node('h4','',example.id+' · '+example.title));
+            const passage=node('blockquote','lesson-two-passage',example.excerpt);
+            passage.lang='en';
+            const question=node('p','lesson-two-question',example.question);
+            question.lang='en';
+            item.append(node('div','lesson-two-example-label','原文'),passage,node('div','lesson-two-example-label','题干'),question);
+            practice.append(item);
+    });
+    lesson.append(practice);
   }else if(section==='heading'){
-    lesson.append(node('p','intro','23 组段落功能词。词语只提示段落功能，需结合其所在句及全段主旨核对。'));
     const table=node('table','lesson-two-table');
-    const caption=node('caption','','段落功能与信号词');table.append(caption);
+    const caption=node('caption','','题干／标题 → 原文内容');table.append(caption);
     const head=document.createElement('thead'),tr=document.createElement('tr');
-    ['功能方向','信号词'].forEach(t=>{const th=node('th','',t);th.scope='col';tr.append(th);});head.append(tr);table.append(head);
+    ['功能方向','题干／标题中可能出现','原文中找什么'].forEach(t=>{const th=node('th','',t);th.scope='col';tr.append(th);});head.append(tr);table.append(head);
     const body=document.createElement('tbody');
-    lessonTwoContent.heading.forEach(([label,words])=>{
-      const row=document.createElement('tr'),th=node('th','',label),td=node('td','',words);th.scope='row';row.append(th,td);body.append(row);
-    });table.append(body);lesson.append(table);
+    lessonTwoContent.heading.forEach(([label,words,clues])=>{
+      const row=document.createElement('tr'),th=node('th','',label),td=node('td','',words),description=node('td','matching-clues',clues);
+      th.scope='row';td.lang='en';row.append(th,td,description);body.append(row);
+    });table.append(body);
+    const wrap=node('div','lesson-two-table-wrap');wrap.tabIndex=0;wrap.setAttribute('role','region');wrap.setAttribute('aria-label','匹配题对应表，可横向滚动');wrap.append(table);lesson.append(wrap);
+    const practiceLink=node('a','primary','剑雅 20 · Test 3 · Passage 2');
+    practiceLink.href='./practice/c20-t3-p2.html';
+    practiceLink.style.cssText='display:inline-block;margin-top:28px;text-decoration:none';
+    lesson.append(practiceLink);
   }else{
-    lesson.append(node('p','intro','实在没时间了：判断题的原帖猜题经验'),node('p','lesson-two-note','以下属于原帖猜题说法，不是已验证的命题规律。'));
-    lesson.append(node('h3','keywords-title','判断题'),cards(lessonTwoContent.guessJudgment),node('h3','keywords-title','选择题'),node('p','intro','原帖的选项倾向'),cards(lessonTwoContent.guessChoice));
+    lesson.append(node('h3','keywords-title','判断题'),cards(lessonTwoContent.guessJudgment),node('h3','keywords-title','选择题'),node('p','intro','选项倾向'),cards(lessonTwoContent.guessChoice));
   }
 }
 const annotations=new Map();
